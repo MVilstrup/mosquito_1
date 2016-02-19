@@ -1,5 +1,8 @@
 from .page import Page
 import cgi
+import asyncio
+import lxml.html
+import nltk
 
 
 class HTMLPage(Page):
@@ -18,11 +21,16 @@ class HTMLPage(Page):
 
         self._body = yield from response.text()
 
+    @asyncio.coroutine
     def get_body(self):
         return self._body
 
+    @asyncio.coroutine
     def get_links(self):
-        return self._links
+        dom = lxml.html.fromstring(self_body)
+        for link in dom.xpath('//a/@href'):
+            yield link
 
+    @asyncio.coroutine
     def get_text(self):
-        return self._text
+        yield from nltk.clean_html(self._body)
