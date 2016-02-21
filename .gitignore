@@ -6,6 +6,7 @@ __pycache__/
 Vagrantfile
 .vagrant/
 .DS_Store
+*.csv
 
 # C extensions
 *.so

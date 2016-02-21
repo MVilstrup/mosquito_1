@@ -4,40 +4,40 @@ pages. Links should not be confused with URLs which are a subset of the link
 """
 import msgpack
 import re
+from url import URL
+
 
 class LinkDecodeError(Exception):
     pass
 
+
 class Link(object):
 
-    __slots__ = ["protocol", "domain", "ip", "path", "anchor_text", "classes_"]
+    __slots__ = ["url", "anchor_text", "classes_"]
 
     def __init__(self,
-                 protocol=None,
-                 domain=None,
-                 ip=None,
-                 path=None,
+                 url=None,
                  anchor_text=None,
                  classes=None,
                  instance=None):
         if instance is not None:
             self.decode(instance)
         else:
-            self.protocol = protocol
-            self.domain = domain
-            self.path = path
-            self.ip = ip
+            self.url = url
             self.anchor_text = anchor_text
             self.classes_ = classes
-        if self.protocol is None:
-            raise LinkDecodeError(")
+        if self.url is None:
+            raise LinkDecodeError("Protocol is not  provided")
+        elif not isinstance(self.url, URL):
+            raise LinkDecodeError("url is not in correct format")
+        if self.domain is None:
+            raise LinkDecodeError("Domain is not  provided")
 
     def decode(self, instance):
-        if instance is None:
-            raise LinkDecodeError("No instance provided")
-
-        values = msgpack.unpackb(instance)
-
+        try:
+            values = msgpack.unpackb(instance)
+        except Exception:
+            raise LinkDecodeError("Could not unpack instance")
 
         assert len(values) == 6
         assert values[0] is not None
@@ -57,11 +57,11 @@ class Link(object):
         return msgpack.packb(values)
 
     def __eq__(self, other):
-        return self.reverse_string() == other.reverse_string and \
-                self.anchor_text == other.anchor_text and self.ip == other.ip
+        return self.url == other.url and self.anchor_text == other.anchor_text\
+                and self.ip == other.ip
 
     def __hash__(self):
-        hash_ = hash(self.to_string())
+        hash_ = hash(self.url)
         if self.anchor_text is not None:
             hash_ = hash_ ^ hash(self.anchor_text)
         if self.classes_ is not None:
@@ -69,28 +69,9 @@ class Link(object):
         return hash_
 
     def __repr__(self):
-        return "Link(protocol={}, domain={}, ip={},\
-                path={}, anchor_text={}, classes_={})".format(
-            self.protocol, self.domain, self.ip, self.path, self.anchor_text,
-            self.classes_)
-
-    def to_string(self):
-        host = self.ip
-        if host is None:
-            host = self.domain
-        return "{protocol}www.{host}{path}".format(protocol=self.protocol,
-                                                   host=host,
-                                                   path=self.path)
-
-    def url(self):
-        return self.to_string()
+        return "Link(domain={}, url={}, anchor_text={}, classes_={})".format(
+            self.domain, self.url, self.anchor_text, self.classes_)
 
     def classes(self):
         return self.classes_.split(" ")
 
-    def reverse_string(self):
-        return self.to_string()[::-1]
-
-    def _clean_domain(self, domain):
-        domain = re.sub(r"(http\:\/\/|https\:\/\/)", "", domain)
-        return re.sub(r"www\.", "", domain)
