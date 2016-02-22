@@ -2,14 +2,14 @@
 # coding: utf-8
 #
 # Task ventilator
-# Binds PUSH socket to tcp://localhost:5557
+# Binds PUSH socket to tcp://localdomain:5557
 # Sends batch of tasks to workers via that socket
 #
 # Author: Lev Givon <lev(at)columbia(dot)edu>
 
 import zmq
 import codecs
-from host import Host
+from domain import Domain
 import asyncio
 
 try:
@@ -29,7 +29,7 @@ class DNSServer(object):
 
         # Socket to receive all resolved domains from the sink
         self.resolved = context.socket(zmq.PULL)
-        self.resolved.connect("tcp://localhost:{port}".format(port=pull))
+        self.resolved.connect("tcp://localdomain:{port}".format(port=pull))
         self.domains = domains
 
     @asyncio.coroutine
@@ -37,19 +37,19 @@ class DNSServer(object):
         domains_sent = 0
         for domain in self.domains:
             domains_sent += 1
-            host = Host(name=domain)
-            self.sender.send(host.encode())
+            domain = Domain(name=domain)
+            self.sender.send(domain.encode())
 
     @asyncio.coroutine
     def receive(self):
         done = 0
-        with codecs.open("hosts_with_ip.csv", "w", encoding="utf-8") as _file:
+        with codecs.open("domains_with_ip.csv", "w", encoding="utf-8") as _file:
             while True:
-                host = Host(instance=self.resolved.recv())
-                print(done, host.name, host.ip, host.attempt, "\n")
+                domain = Domain(instance=self.resolved.recv())
+                print(done, domain.name, domain.ip "\n")
                 done += 1
                 _file.write("{} {}  {}  {}  {}".format(
-                    done, host.name, host.ip, host.attempt, "\n"))
+                    done, domain.name, domain.ip, domain.attempt, "\n"))
 
 
 if __name__ == "__main__":

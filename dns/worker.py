@@ -1,7 +1,7 @@
 # Task worker
-# Connects PULL socket to tcp://localhost:5557
+# Connects PULL socket to tcp://localdomain:5557
 # Collects workloads from ventilator via that socket
-# Connects PUSH socket to tcp://localhost:5558
+# Connects PUSH socket to tcp://localdomain:5558
 # Sends results to sink via that socket
 #
 # Author: Lev Givon <lev(at)columbia(dot)edu>
@@ -11,7 +11,7 @@ import time
 import zmq
 import asyncio
 import socket
-from host import Host
+from domain import Domain
 from multiprocessing import Process
 
 
@@ -21,37 +21,37 @@ class Worker(object):
         context = zmq.Context()
         # Socket to receive messages on
         self.receiver = context.socket(zmq.PULL)
-        self.receiver.connect("tcp://localhost:{pull}".format(pull=pull))
+        self.receiver.connect("tcp://localdomain:{pull}".format(pull=pull))
 
         # Socket to send messages to
         self.sender = context.socket(zmq.PUSH)
-        self.sender.connect("tcp://localhost:{push}".format(push=push))
+        self.sender.connect("tcp://localdomain:{push}".format(push=push))
 
     @asyncio.coroutine
     def start(self):
         while True:
-            host = Host(instance=self.receiver.recv())
+            domain = Domain(instance=self.receiver.recv())
 
             # Simple progress indicator for the viewer
-            host.ip = yield from self.resolve(host.name)
+            domain.ip = yield from self.resolve(domain.name)
             sys.stdout.write('.')
             sys.stdout.flush()
 
             # Send results to sink
-            self.sender.send(host.encode())
+            self.sender.send(domain.encode())
 
     @asyncio.coroutine
-    def resolve(self, host):
+    def resolve(self, domain):
         ip = None
         try:
-            ip = socket.gethostbyname(host)
+            ip = socket.getdomainbyname(domain)
         except socket.gaierror:
             ip = "No IP Address"
         return ip
 
 
 def start_worker():
-    # Worker to go through all the hosts the first time
+    # Worker to go through all the domains the first time
     primary_worker = Worker(pull=5557, push=5558)
 
     loop = asyncio.get_event_loop()

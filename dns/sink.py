@@ -1,11 +1,11 @@
 # Task sink
-# Binds PULL socket to tcp://localhost:5558
+# Binds PULL socket to tcp://localdomain:5558
 # Collects results from workers via that socket
 #
 # Author: Lev Givon <lev(at)columbia(dot)edu>
 
 import zmq
-from host import Host
+from domain import Domain
 import asyncio
 import sys
 
@@ -27,15 +27,15 @@ class Sink(object):
         # Process 100 confirmations
         tasks_done = 0
         while True:
-            host = Host(instance=self.receiver.recv())
-            self.finish.send(host.encode())
+            domain = Domain(instance=self.receiver.recv())
+            self.finish.send(domain.encode())
             tasks_done += 1
             sys.stdout.write('.')
             sys.stdout.flush()
 
 
 if __name__ == '__main__':
-    # Worker to go through all the hosts the first time
+    # Worker to go through all the domains the first time
     sink = Sink(pull=5558, push=5559)
 
     loop = asyncio.get_event_loop()
