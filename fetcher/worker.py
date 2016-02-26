@@ -4,7 +4,7 @@ import zmq
 import asyncio
 
 from multiprocessing import Process
-from http import Request, Response
+from mosquito.messages.http import Request, Response
 
 
 class Worker(object):

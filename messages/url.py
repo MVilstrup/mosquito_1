@@ -18,9 +18,10 @@ class URLEncodeError(Exception):
 
 
 class URL(object):
-    __slots__ = ["protocol", "location", "path", "parameters", "reversed"]
+    __slots__ = ["protocol", "location", "ip", "path", "parameters", "priority"
+                 "reversed"]
 
-    def __init__(self, url=None, instance=None):
+    def __init__(self, priority=0, ip=None, url=None, instance=None):
         if url is None and instance is None:
             raise URLDecodeError("Either a url or instance has to be provided")
         if instance is not None:
@@ -32,6 +33,8 @@ class URL(object):
             self.path = parsed.path
             self.parameters = params_to_dict(parsed.params)
             self.reversed = reverse(url)
+            self.ip = ip
+            self.priority = priority
 
     def decode(self, instance):
         try:
@@ -45,9 +48,11 @@ class URL(object):
         try:
             self.protocol = clean_protocol(values[b"protocol"].decode("utf-8"))
             self.location = clean_location(values[b"location"].decode("utf-8"))
-            self.path = clean_location(values[b"path"].decode("utf-8"))
+            self.path = clean_path(values[b"path"].decode("utf-8"))
             self.parameters = params_to_dict(values[b"parameters"].decode(
                 "utf-8"))
+            self.priority = int(values[b"priority"])
+            self.ip = values[b"priority"].decode("utf-8")
             self.reversed = reverse(self.to_string())
         except KeyError:
             raise URLDecodeError("Could not unpack values, keys does not match")
@@ -56,14 +61,20 @@ class URL(object):
         values = {"protocol": self.protocol,
                   "location": self.location,
                   "path": self.path,
-                  "parameters": dict_to_params(self.params)}
+                  "parameters": dict_to_params(self.params),
+                  "priority": self.priority,
+                  "ip": self.ip}
 
         return msgpack.packb(values)
 
-    def to_string(self):
+    def to_string(self, use_ip=False):
+        if use_ip and self.ip is not None:
+            host = self.ip
+        else:
+            host = self.location
         return "{protocol}://www.{host}{path}{params}".format(
             protocol=self.protocol,
-            host=self.location,
+            host=host,
             path=self.path,
             params=dict_to_params(self.parameters))
 

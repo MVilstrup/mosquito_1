@@ -9,14 +9,15 @@ class HostEncodeError(Exception):
 
 class Host(object):
 
-    __slots__ = ["domain", "ip_addresses"]
+    __slots__ = ["domain", "ip_addresses", "has_ip"]
 
-    def __init__(self, domain=None, ip_addresses=None, instance=None):
+    def __init__(self, domain=None, ip_addresses=[], has_ip=True, instance=None):
         if instance is not None:
             self.decode(instance)
         else:
             self.domain = self._clean_host(domain)
             self.ip_addresses = ip_addresses
+            self.has_ip = has_ip
 
     def decode(self, instance):
         values = msgpack.unpackb(instance)
@@ -29,7 +30,7 @@ class Host(object):
             domain = values[b"domain"]
             ip_addresses = values[b"ip_addresses"]
             self.domain = self._clean_host(domain.decode("utf-8"))
-            
+
             if ip_addresses:
                 ip_address_list = []
                 for ip in ip_addresses:
@@ -37,7 +38,6 @@ class Host(object):
                 self.ip_addresses = ip_address_list
         except KeyError:
             raise HostDecodeError("Could not unpack values, keys do not match")
-
 
 
     def encode(self):
@@ -48,6 +48,12 @@ class Host(object):
         values = {"domain":self.domain,"ip_addresses": IPs}
 
         return msgpack.packb(values)
+
+    def is_valid(self):
+        return self.has_ip
+
+    def invalidate(self):
+        self.has_ip = Fals
 
     def add_ip(self, ip):
         self.ip_addresses.append(ip)

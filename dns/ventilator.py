@@ -4,12 +4,10 @@
 # Task ventilator
 # Binds PUSH socket to tcp://localdomain:5557
 # Sends batch of tasks to workers via that socket
-#
-# Author: Lev Givon <lev(at)columbia(dot)edu>
 
 import zmq
 import codecs
-from domain import Domain
+from mosquito.messages import Host
 import asyncio
 
 try:
@@ -32,16 +30,14 @@ class DNSServer(object):
         self.resolved.connect("tcp://localdomain:{port}".format(port=pull))
         self.domains = domains
 
-    @asyncio.coroutine
-    def send(self):
+    async def send(self):
         domains_sent = 0
         for domain in self.domains:
             domains_sent += 1
             domain = Domain(name=domain)
             self.sender.send(domain.encode())
 
-    @asyncio.coroutine
-    def receive(self):
+    async def receive(self):
         done = 0
         with codecs.open("domains_with_ip.csv", "w", encoding="utf-8") as _file:
             while True:

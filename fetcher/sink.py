@@ -1,13 +1,11 @@
 # Task sink
 # Binds PULL socket to tcp://localhost:5558
 # Collects results from workers via that socket
-#
-# Author: Lev Givon <lev(at)columbia(dot)edu>
 
 import zmq
-from host import Host
 import asyncio
 import sys
+from mosquito.messages.http import Response
 
 
 class Sink(object):
@@ -22,16 +20,12 @@ class Sink(object):
         self.finish = context.socket(zmq.PUSH)
         self.finish.bind("tcp://*:{port}".format(port=push))
 
-    @asyncio.coroutine
-    def start(self):
+    async def start(self):
         # Process 100 confirmations
         tasks_done = 0
         while True:
-            host = Host(instance=self.receiver.recv())
-            self.finish.send(host.encode())
-            tasks_done += 1
-            sys.stdout.write('.')
-            sys.stdout.flush()
+            response = Response(instance=self.receiver.recv())
+            self.finish.send(response.encode())
 
 
 if __name__ == '__main__':

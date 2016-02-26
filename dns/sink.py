@@ -1,11 +1,9 @@
 # Task sink
 # Binds PULL socket to tcp://localdomain:5558
 # Collects results from workers via that socket
-#
-# Author: Lev Givon <lev(at)columbia(dot)edu>
 
 import zmq
-from domain import Domain
+from mosquito.messages import Host
 import asyncio
 import sys
 
@@ -18,12 +16,11 @@ class Sink(object):
         self.receiver = context.socket(zmq.PULL)
         self.receiver.bind("tcp://*:{port}".format(port=pull))
 
-        # Socket to reschedule domains that timed out
+        # Socket used to send return back the resolved domains
         self.finish = context.socket(zmq.PUSH)
         self.finish.bind("tcp://*:{port}".format(port=push))
 
-    @asyncio.coroutine
-    def start(self):
+    async def start(self):
         # Process 100 confirmations
         tasks_done = 0
         while True:
