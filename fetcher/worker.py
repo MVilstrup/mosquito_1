@@ -2,6 +2,7 @@ import sys
 import time
 import zmq
 import asyncio
+import aiohttp
 
 from multiprocessing import Process
 from mosquito.messages.http import Request, Response

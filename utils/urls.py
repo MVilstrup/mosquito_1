@@ -63,6 +63,9 @@ def clean_path(self, path):
         path = "/{}".format(path.lower())
     return path
 
-
-def reverse(self, string):
-    return string[::-1]
+def get_domain(self, url):
+    """
+    Method used to extract a domain from a given URL
+    """
+    parsed_uri = urlparse(url)
+    return '{uri.scheme}://{uri.netloc}/'.format(uri=parsed_uri)

@@ -6,7 +6,7 @@ import msgpack
 import re
 from urllib.parse import urlparse
 from mosquito.utils.urls import (params_to_dict, dict_to_params, clean_protocol,
-                                 clean_location, clean_path, reverse)
+                                 clean_location, clean_path)
 
 
 class URLDecodeError(Exception):
@@ -18,8 +18,7 @@ class URLEncodeError(Exception):
 
 
 class URL(object):
-    __slots__ = ["protocol", "location", "ip", "path", "parameters", "priority"
-                 "reversed"]
+    __slots__ = ["protocol", "location", "ip", "path", "parameters", "priority"]
 
     def __init__(self, priority=0, ip=None, url=None, instance=None):
         if url is None and instance is None:
@@ -35,6 +34,10 @@ class URL(object):
             self.reversed = reverse(url)
             self.ip = ip
             self.priority = priority
+
+    @property
+    def reversed(self):
+        return self.to_string()[::-1]
 
     def decode(self, instance):
         try:
@@ -79,7 +82,7 @@ class URL(object):
             params=dict_to_params(self.parameters))
 
     def __eq__(self, other):
-        return self.reversed == other.reversed
+        return self.to_string() == other.to_string()
 
     def __hash__(self):
         return hash(self.to_string())
