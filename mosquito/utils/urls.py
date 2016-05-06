@@ -42,7 +42,7 @@ def dict_to_params(self, param_dict):
     for key, value in param_dict.lower_items():
         if not params.endswith("?"):
             params += "&"
-        params += "{key}={value}".format(key=key, value)
+        params += "{key}={value}".format(key=key, value=value)
 
     return params
 
@@ -62,6 +62,7 @@ def clean_path(self, path):
     if not path.startswith("/"):
         path = "/{}".format(path.lower())
     return path
+
 
 def get_domain(self, url):
     """

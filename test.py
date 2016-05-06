@@ -1,6 +1,6 @@
-from fetcher import Fetcher
-from parser import Parser
-from coordinator import Coordinator
+from mosquito.fetcher import Fetcher
+from mosquito.parser import Parser
+from mosquito.coordinator import Coordinator
 from multiprocessing import Process
 import zmq
 import logging

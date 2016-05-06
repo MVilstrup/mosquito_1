@@ -38,6 +38,6 @@ class Ventilator(object):
             except KeyboardInterrupt:
                 print("Exiting ventilator")
                 return
-            except Exception as exc:
+            except:
                 logger.warning("ERROR: {}".format(exc))
                 pass

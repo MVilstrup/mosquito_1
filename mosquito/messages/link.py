@@ -4,7 +4,7 @@ pages. Links should not be confused with URLs which are a subset of the link
 """
 import msgpack
 import re
-from url import URL
+from .url import URL
 
 
 class LinkDecodeError(Exception):
@@ -18,6 +18,7 @@ class LinkEncodeError(Exception):
 class Link(object):
 
     __slots__ = ["url", "anchor_text", "classes"]
+    TYPE = "LINK"
 
     def __init__(self, url=None, anchor_text=None, classes=None, instance=None):
         if instance is not None:

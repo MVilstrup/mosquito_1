@@ -19,6 +19,7 @@ class URLEncodeError(Exception):
 
 class URL(object):
     __slots__ = ["protocol", "location", "ip", "path", "parameters", "priority"]
+    TYPE = "URL"
 
     def __init__(self, priority=0, ip=None, url=None, instance=None):
         if url is None and instance is None:
@@ -31,7 +32,6 @@ class URL(object):
             self.location = parsed.netloc
             self.path = parsed.path
             self.parameters = params_to_dict(parsed.params)
-            self.reversed = reverse(url)
             self.ip = ip
             self.priority = priority
 
@@ -66,7 +66,8 @@ class URL(object):
                   "path": self.path,
                   "parameters": dict_to_params(self.params),
                   "priority": self.priority,
-                  "ip": self.ip}
+                  "ip": self.ip,
+                  "TYPE": URL.TYPE}
 
         return msgpack.packb(values)
 

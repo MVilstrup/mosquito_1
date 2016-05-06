@@ -1,17 +1,25 @@
 import msgpack
 from random import randint
 
+
 class HostDecodeError(Exception):
     pass
+
 
 class HostEncodeError(Exception):
     pass
 
+
 class Host(object):
 
     __slots__ = ["domain", "ip_addresses", "has_ip"]
+    TYPE = "HOST"
 
-    def __init__(self, domain=None, ip_addresses=[], has_ip=True, instance=None):
+    def __init__(self,
+                 domain=None,
+                 ip_addresses=[],
+                 has_ip=True,
+                 instance=None):
         if instance is not None:
             self.decode(instance)
         else:
@@ -39,13 +47,12 @@ class Host(object):
         except KeyError:
             raise HostDecodeError("Could not unpack values, keys do not match")
 
-
     def encode(self):
         if self.domain is None or self.domain == "":
             raise HostEncodeError("Domain should always be present")
 
         IPs = self.ip_addresses if self.ip_addresses is not None else None
-        values = {"domain":self.domain,"ip_addresses": IPs}
+        values = {"domain": self.domain, "ip_addresses": IPs}
 
         return msgpack.packb(values)
 
@@ -65,7 +72,6 @@ class Host(object):
         """
         return self.ip_addresses[randint(0, len(self.ip_addresses))]
 
-
     def __eq__(self, other):
         return self.host == other.host
 
@@ -73,7 +79,7 @@ class Host(object):
         _hash = hash(self.domain)
         if self.ip_addresses is not None:
             for ip in self.ip_addresses:
-            _hash = _hash ^ hash(self.ip)
+                _hash = _hash ^ hash(ip)
         return _hash
 
     def __repr__(self):

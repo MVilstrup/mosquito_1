@@ -6,6 +6,7 @@ import logging
 from .ventilator import Ventilator
 from .worker import Worker
 from .sink import Sink
+from mosquito.messages import Message
 
 logger = logging.getLogger('myapp')
 hdlr = logging.FileHandler('myapp.log')
