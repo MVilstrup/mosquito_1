@@ -1,7 +1,9 @@
-from Queue import FifoQueue
+from queue import Queue
 import sys
 import time
 import zmq
+import logging
+from urllib.parse import urlparse
 
 
 class BackQueue(object):
@@ -12,17 +14,26 @@ class BackQueue(object):
 
     def __init__(self, push_port, request_port, queue_amount):
         super(BackQueue, self).__init__()
+        self.logger = logging.getLogger('back_queue')
+        hdlr = logging.FileHandler('back_queue.log')
+        formatter = logging.Formatter(
+            '%(asctime)-15s %(levelname)s : %(message)s')
+        hdlr.setFormatter(formatter)
+        self.logger.addHandler(hdlr)
+        self.logger.setLevel(logging.INFO)
+
         assert queue_amount > 0
 
         self.queue_amount = queue_amount
         self.queues = []
         for i in range(queue_amount):
-            self.queues.append(FifoQueue())
+            self.queues.append(Queue())
 
         context = zmq.Context()
         # Socket used to request a new batch of URLs from the FrontQueue
         self.request_urls = context.socket(zmq.REQ)
         self.request_urls.connect(request_port)
+        self.logger.info("Connected to Coordinator on {}".format(request_port))
 
         # Socket used to request a new batch of URLs from the FrontQueue
         self.push_urls = context.socket(zmq.PUSH)
@@ -54,9 +65,12 @@ class BackQueue(object):
     def get_batch(self):
         urls = []
         for queue in self.queues:
-            url = queue.get_nowait()
-            if url is not None:
-                urls.append(url)
+            if queue.empty():
+                continue
+
+            urls.append(queue.get_nowait())
+
+        self.logger.info("Pushing {} urls".format(len(urls)))
         return urls
 
     def put_batch(self, urls):

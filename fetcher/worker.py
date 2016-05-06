@@ -6,18 +6,19 @@ import requests
 from threading import Thread
 from queue import Queue
 
-logger = logging.getLogger('fetcher')
-hdlr = logging.FileHandler('fetcher.log')
-formatter = logging.Formatter('%(asctime)-15s %(levelname)s : %(message)s')
-hdlr.setFormatter(formatter)
-logger.addHandler(hdlr)
-logger.setLevel(logging.INFO)
-
 
 class Worker(object):
 
     def __init__(self, work_port, result_port, uid, loop=None, timeout=10):
         context = zmq.Context()
+
+        self.logger = logging.getLogger('fetcher')
+        hdlr = logging.FileHandler('fetcher.log')
+        formatter = logging.Formatter(
+            '%(asctime)-15s %(levelname)s : %(message)s')
+        hdlr.setFormatter(formatter)
+        self.logger.addHandler(hdlr)
+        self.logger.setLevel(logging.INFO)
         self.id = uid
         # Socket to receive messages on
         self.receiver = context.socket(zmq.PULL)
@@ -55,4 +56,4 @@ class Worker(object):
                 if r.status_code == 200:
                     self.result_queue.put((url, r.text))
             except Exception as exc:
-                logger.info("ERROR: {} {}".format(url, exc))
+                self.logger.info("ERROR: {} {}".format(url, exc))

@@ -5,18 +5,20 @@
 import zmq
 import logging
 
-logger = logging.getLogger('fetcher')
-hdlr = logging.FileHandler('fetcher.log')
-formatter = logging.Formatter('%(asctime)-15s %(levelname)s : %(message)s')
-hdlr.setFormatter(formatter)
-logger.addHandler(hdlr)
-logger.setLevel(logging.INFO)
 
 
 class Sink(object):
 
     def __init__(self, result_port, send_port):
         context = zmq.Context()
+
+
+        self.logger = logging.getLogger('fetcher')
+        hdlr = logging.FileHandler('fetcher.log')
+        formatter = logging.Formatter('%(asctime)-15s %(levelname)s : %(message)s')
+        hdlr.setFormatter(formatter)
+        self.logger.addHandler(hdlr)
+        self.logger.setLevel(logging.INFO)
 
         # Socket to receive messages on
         self.result_port = context.socket(zmq.PULL)
@@ -34,6 +36,6 @@ class Sink(object):
             pages.append((url, page))
 
             if len(pages) >= 10:
-                logger.info("Sending pages")
+                self.logger.info("Sending pages")
                 self.send_port.send_json(pages)
                 pages = []

@@ -7,18 +7,20 @@ from threading import Thread
 from queue import Queue
 from lxml.html import document_fromstring
 
-logger = logging.getLogger('parser')
-hdlr = logging.FileHandler('parser.log')
-formatter = logging.Formatter('%(asctime)-15s %(levelname)s : %(message)s')
-hdlr.setFormatter(formatter)
-logger.addHandler(hdlr)
-logger.setLevel(logging.INFO)
-
 
 class Worker(object):
 
     def __init__(self, work_port, result_port, uid, timeout=10):
         context = zmq.Context()
+
+        self.logger = logging.getLogger('parser')
+        hdlr = logging.FileHandler('parser.log')
+        formatter = logging.Formatter(
+            '%(asctime)-15s %(levelname)s : %(message)s')
+        hdlr.setFormatter(formatter)
+        self.logger.addHandler(hdlr)
+        self.logger.setLevel(logging.INFO)
+
         self.id = uid
         # Socket to receive messages on
         self.receiver = context.socket(zmq.PULL)
@@ -39,14 +41,13 @@ class Worker(object):
             thread.start()
             threads.append(thread)
 
-        logger.info("Started workers, waiting for pages")
+        self.logger.info("Started workers, waiting for pages")
         while True:
             page = self.receiver.recv_json()
             self.work_queue.put(page)
 
             while not self.result_queue.empty():
                 page, found_links = self.result_queue.get()
-                logger.info("Parsed page")
                 self.sender.send_json([page, found_links])
 
     def _extract_links(self):

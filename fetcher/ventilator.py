@@ -8,18 +8,19 @@
 import zmq
 import logging
 
-logger = logging.getLogger('fetcher')
-hdlr = logging.FileHandler('fetcher.log')
-formatter = logging.Formatter('%(asctime)-15s %(levelname)s : %(message)s')
-hdlr.setFormatter(formatter)
-logger.addHandler(hdlr)
-logger.setLevel(logging.INFO)
 
 
 class Ventilator(object):
 
     def __init__(self, recieve_port, working_port):
         context = zmq.Context()
+
+        logger = logging.getLogger('fetcher')
+        hdlr = logging.FileHandler('fetcher.log')
+        formatter = logging.Formatter('%(asctime)-15s %(levelname)s : %(message)s')
+        hdlr.setFormatter(formatter)
+        logger.addHandler(hdlr)
+        logger.setLevel(logging.INFO)
 
         # Socket to receive lists of urls that should be sent
         self.receiver = context.socket(zmq.PULL)
@@ -32,11 +33,11 @@ class Ventilator(object):
         while True:
             try:
                 urls = self.receiver.recv_json()
-                logger.info("Recieved urls")
                 for url in urls:
                     self.sender.send_string(url)
             except KeyboardInterrupt:
                 print("Exiting ventilator")
                 return
-            except:
+            except Exception as exc:
+                logger.warning("ERROR: {}".format(exc))
                 pass

@@ -8,18 +8,19 @@
 import zmq
 import logging
 
-logger = logging.getLogger('parser')
-hdlr = logging.FileHandler('parser.log')
-formatter = logging.Formatter('%(asctime)-15s %(levelname)s : %(message)s')
-hdlr.setFormatter(formatter)
-logger.addHandler(hdlr)
-logger.setLevel(logging.INFO)
 
 
 class Ventilator(object):
 
     def __init__(self, recieve_port, working_port):
         context = zmq.Context()
+
+        logger = logging.getLogger('parser')
+        hdlr = logging.FileHandler('parser.log')
+        formatter = logging.Formatter('%(asctime)-15s %(levelname)s : %(message)s')
+        hdlr.setFormatter(formatter)
+        logger.addHandler(hdlr)
+        logger.setLevel(logging.INFO)
 
         # Socket to receive lists of urls that should be sent
         self.receiver = context.socket(zmq.PULL)

@@ -52,10 +52,10 @@ if __name__ == "__main__":
             urls += [url.format(d.strip()) for d in domain_file.readlines()]
 
         # Give all start urls the same priority
-        priority = [1 for i in range(len(urls))]
+        priority = [i for i in range(len(urls))]
 
         # Zip together the list of priorities with the list of urls
-        urls = zip(priority, urls)
+        urls = list(zip(priority, urls))
 
         # Start coordinator and give it the seed URLs
         # Connect the coordinator to the fetcher

@@ -7,13 +7,6 @@ from .ventilator import Ventilator
 from .worker import Worker
 from .sink import Sink
 
-logger = logging.getLogger('parser')
-hdlr = logging.FileHandler('parser.log')
-formatter = logging.Formatter('%(asctime)-15s %(levelname)s : %(message)s')
-hdlr.setFormatter(formatter)
-logger.addHandler(hdlr)
-logger.setLevel(logging.INFO)
-
 
 class Parser(object):
     """docstring for Parser"""
@@ -26,6 +19,14 @@ class Parser(object):
                  max_workers=100,
                  forward_pages=False):
 
+        logger = logging.getLogger('parser')
+        hdlr = logging.FileHandler('parser.log')
+        formatter = logging.Formatter(
+            '%(asctime)-15s %(levelname)s : %(message)s')
+        hdlr.setFormatter(formatter)
+        logger.addHandler(hdlr)
+        logger.setLevel(logging.INFO)
+
         super(Parser, self).__init__()
 
         # List of all the processes
@@ -37,7 +38,8 @@ class Parser(object):
         processes.append(ventilator)
 
         # Start the Sink in order to forward the result of the workers
-        sink = Process(target=Sink, args=(result_port, send_port, forward_pages))
+        sink = Process(target=Sink,
+                       args=(result_port, send_port, forward_pages))
         sink.start()
 
         # Start all the workers in order to start the fetching
