@@ -3,6 +3,7 @@ Vagrantfile
 .DS_Store
 *.csv
 *__pycache__/
+*.bloom
 
 # C extensions
 *.so
