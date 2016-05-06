@@ -1,5 +1,6 @@
 from fetcher import Fetcher
 from parser import Parser
+from coordinator import Coordinator
 from multiprocessing import Process
 import zmq
 import logging
@@ -27,41 +28,49 @@ def initiate_parser(receive_port, send_port):
     return parser
 
 
+def initiate_coordinator(roots, start_port, fetcher_port):
+    front_port = "tcp://127.0.0.1:1112"
+    back_port = "tcp://127.0.0.1:1113"
+
+    coordinator = Process(
+        target=Coordinator,
+        args=(roots, start_port, fetcher_port, front_port, back_port))
+    coordinator.start()
+
+    return coordinator
+
+
 if __name__ == "__main__":
-    fetcher_port = "tcp://127.0.0.1:4441"
+    start_port = "tcp://127.0.0.1:1111"
+    fetcher_port = "tcp://127.0.0.1:2222"
     parser_port = "tcp://127.0.0.1:4442"
-    result_port = "tcp://127.0.0.1:7772"
 
     try:
-        fetcher = initiate_fetcher(fetcher_port, parser_port)
-        parser = initiate_parser(parser_port, result_port)
-
         urls = []
         with open("top-1m.csv", "r") as domain_file:
             url = "http://www.{}"
             urls += [url.format(d.strip()) for d in domain_file.readlines()]
 
-        n = 1000
-        url_lists = [urls[i:i + n] for i in range(0, len(urls), n)]
+        # Give all start urls the same priority
+        priority = [1 for i in range(len(urls))]
 
-        # Socket to send links to the fetcher to retrieve the pages
-        context = zmq.Context()
-        sender = context.socket(zmq.PUSH)
-        sender.bind(fetcher_port)
-        print("SENDING URLS")
-        for urls in url_lists:
-            sender.send_json(urls, flags=0)
+        # Zip together the list of priorities with the list of urls
+        urls = zip(priority, urls)
 
-        # Create socket to listen to the parsed links
-        receiver = context.socket(zmq.PULL)
-        receiver.connect(result_port)
-        print("WAITING TO RECEIVE URLS")
-        while True:
-            found_links = receiver.recv_json()
-            for link in found_links:
-                print("Found: {}".format(link))
+        # Start coordinator and give it the seed URLs
+        # Connect the coordinator to the fetcher
+        coordinator = initiate_coordinator(roots=urls,
+                                           start_port=start_port,
+                                           fetcher_port=fetcher_port)
+
+        # Start the fetcher and connect it to the coordinator and the parser
+        fetcher = initiate_fetcher(fetcher_port, parser_port)
+
+        # Start the parser and connect it to the fetcher and the coordinator
+        parser = initiate_parser(parser_port, start_port)
 
         # Block forever
+        coordinator.join()
         fetcher.join()
         parser.join()
     except KeyboardInterrupt:

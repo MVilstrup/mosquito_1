@@ -15,8 +15,12 @@ logger.setLevel(logging.INFO)
 
 class Sink(object):
 
-    def __init__(self, result_port, send_port):
+    def __init__(self, result_port, send_port, forward_pages):
         context = zmq.Context()
+
+        # This setting is used to check if there is a manager in the system
+        # if there is a manager, the crawler is Focused otherwise it is not
+        self.forward_pages = forward_pages
 
         # Socket to receive messages on
         self.result_port = context.socket(zmq.PULL)
@@ -32,7 +36,12 @@ class Sink(object):
         while True:
             try:
                 page, found_links = self.result_port.recv_json()
-                extracted.append(found_links)
+
+                if self.forward_pages:
+                    message = {"page": page, "links": found_links}
+                    extracted.append(message)
+                else:
+                    extracted.append(found_links)
 
                 if len(extracted) >= 10:
                     logger.info("Sending extracted links")

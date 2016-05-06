@@ -23,7 +23,9 @@ class Parser(object):
                  work_port,
                  result_port,
                  send_port,
-                 max_workers=100):
+                 max_workers=100,
+                 forward_pages=False):
+
         super(Parser, self).__init__()
 
         # List of all the processes
@@ -35,7 +37,7 @@ class Parser(object):
         processes.append(ventilator)
 
         # Start the Sink in order to forward the result of the workers
-        sink = Process(target=Sink, args=(result_port, send_port))
+        sink = Process(target=Sink, args=(result_port, send_port, forward_pages))
         sink.start()
 
         # Start all the workers in order to start the fetching

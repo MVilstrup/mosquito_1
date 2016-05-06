@@ -1,7 +1,8 @@
 from urlparse import urlparse
-from bloom.pybloomfilter import pybloomfilter
-from Queue import PriorityQueue
 import zmq
+from .back_queue import BackQueue
+from .front_queue import FrontQueue
+from multiprocessing import Process
 
 
 class Coordinator(object):
@@ -10,60 +11,49 @@ class Coordinator(object):
     next
     """
 
-    def __init__(self, roots, inbound_port, outbound_port):
-        # Roots are a list of start URLs that should be crawled
-        self.roots = roots
+    def __init__(self, roots, inbound_port, outbound_port, front_port,
+                 back_port):
 
-        # Use a BloomFilter to figure out if the urls have been seen before
-        self.seen_urls = pybloomfilter.BloomFilter(100000000, 0.01,
-                                                   '/tmp/words.bloom')
+        # Initialize FrontQueue used to prioritize what urls to visit next
+        front_queue = Process(target=FrontQueue, args=(inbound_port, roots))
+        front_queue.start()
 
-        # Add the roots to the seen urls
-        self.add_urls(roots)
-
-        # Use a priority queue in to figure out which URLs to visit next
-        self.front_queue = PriorityQueue()
-        self.domain_visits = {}
+        # Initialize BackQueue used to be kind to all domains by limiting the
+        # amount of request sent to each domain at a time
+        batch_size = 1000
+        back_queue = Process(target=BackQueue, args=(outbound_port, batch_size))
+        back_queue.start()
 
         context = zmq.Context()
-        # Socket to receive lists of urls that should be sent
-        self.receiver = context.socket(zmq.PULL)
-        self.receiver.connect(inbound_port)
+        # Socket used to receive requests for new URLs from the BackQueue
+        self.back_server = context.socket(zmq.REP)
+        self.back_server.connect(back_port)
 
-        # Socket to send messages onto the workers to resolve the domain
-        self.sender = context.socket(zmq.PUSH)
-        self.sender.bind(outbound_port)
+        # Socket used to request a new batch of URLs from the FrontQueue
+        self.front_client = context.socket(zmq.REQ)
+        self.front_client.connect(front_port)
 
-    def listen(self):
-        pass
+        while True:
+            # Wait for a request for urls from the BackQueue
+            request = self.back_server.recv_string()
 
-    def push(self):
-        pass
+            # Check the request is proper
+            if not request or request != "REQUEST":
+                continue
 
-    def maintain(self):
-        pass
+            # Forward the request to the FrontQueue to retrieve the URLs
+            self.front_client.send_string(request)
 
-    def add_urls(self, urls):
-        """
-        Add a list of URLs to the queue if they have not been seen before
-        """
-        new_urls = []
-        for priority, url in urls:
-            if not self._is_seen(url):
-                self.priority_queue.put_nowait((priority, url))
-                new_urls.append(url)
+            # Wait for the FrontQueue to respond
+            url_list = self.front_client.recv_json()
 
-        self.seen_urls.update(new_urls)
+            # Check all URLs in the response and send them to the BackQueue
+            urls = self.check_urls(url_list)
+            if urls:
+                self.back_server.send_json(urls)
 
-    def _is_seen(self, url):
-        """
-        Checks wether this URL has been seen before
-        """
-        return url in self.seen_urls
+        front_queue.join()
+        back_queue.join()
 
-    def get_domain(self, url):
-        """
-        Method used to extract a domain from a given URL
-        """
-        parsed_uri = urlparse(url)
-        return '{uri.scheme}://{uri.netloc}/'.format(uri=parsed_uri)
+    def check_urls(self, urls):
+        return urls
