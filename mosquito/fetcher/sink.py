@@ -4,7 +4,8 @@
 
 import zmq
 import logging
-
+from mosquito.messages.pages import HTMLPage
+from mosquito.messages import DataList
 
 
 class Sink(object):
@@ -12,10 +13,10 @@ class Sink(object):
     def __init__(self, result_port, send_port):
         context = zmq.Context()
 
-
         self.logger = logging.getLogger('fetcher')
         hdlr = logging.FileHandler('fetcher.log')
-        formatter = logging.Formatter('%(asctime)-15s %(levelname)s : %(message)s')
+        formatter = logging.Formatter(
+            '%(asctime)-15s %(levelname)s : %(message)s')
         hdlr.setFormatter(formatter)
         self.logger.addHandler(hdlr)
         self.logger.setLevel(logging.INFO)
@@ -32,10 +33,11 @@ class Sink(object):
     def _forward(self):
         pages = []
         while True:
-            url, page = self.result_port.recv_json()
-            pages.append((url, page))
+            page = HTMLPage(instance=self.result_port.recv())
+            pages.append(page)
 
             if len(pages) >= 10:
                 self.logger.info("Sending pages")
-                self.send_port.send_json(pages)
+                page_list = DataList(type="PAGES", elements=pages)
+                self.send_port.send(page_list.encode())
                 pages = []

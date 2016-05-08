@@ -4,6 +4,7 @@ import time
 import zmq
 import logging
 from urllib.parse import urlparse
+from mosquito.messages import DataList, Message, URL
 
 
 class BackQueue(object):
@@ -48,18 +49,20 @@ class BackQueue(object):
 
             # Retrieve URLs from the Coordinater
             # Add the urls to the BackQueue afterwards
-            urls = self.request_urls.recv_json()
+            urls = DataList(instance=self.request_urls.recv())
             self.put_batch(urls)
 
             # Get a batch of URLs that have been through the BackQueue
             # Push these to the fetchers
-            urls = self.get_batch()
-            self.push_urls.send_json(urls)
+
+            batch = self.get_batch()
+            if batch:
+                urls = DataList(type="URLS", elements=batch)
+                self.logger.info("Pushing {} urls".format(len(urls)))
+                self.push_urls.send(urls.encode())
 
     def put(self, url):
-        parsed_uri = urlparse(url)
-        location = parsed_uri.netloc
-        queue_id = hash(location) % self.queue_amount
+        queue_id = hash(url.location) % self.queue_amount
         self.queues[queue_id].put_nowait(url)
 
     def get_batch(self):
@@ -70,7 +73,6 @@ class BackQueue(object):
 
             urls.append(queue.get_nowait())
 
-        self.logger.info("Pushing {} urls".format(len(urls)))
         return urls
 
     def put_batch(self, urls):

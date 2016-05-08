@@ -2,6 +2,7 @@ from queue import PriorityQueue
 from pybloomfilter import BloomFilter
 import zmq
 import logging
+from mosquito.messages import DataList, URL
 
 
 class FrontQueue(object):
@@ -28,7 +29,7 @@ class FrontQueue(object):
         self.seen_urls = BloomFilter(100000000, 0.01, b'urls.bloom')
 
         # Add all roots to the seen_urls and PriorityQueue
-        self.add_urls(roots)
+        self.add_urls([URL(url=url) for url in roots])
 
         # Socket to receive found URLs on
         self.receiver = context.socket(zmq.PULL)
@@ -48,9 +49,9 @@ class FrontQueue(object):
             try:
                 if self.receiver in sockets and sockets[
                         self.receiver] == zmq.POLLIN:
-                    url_lists = self.receiver.recv_json()
-                    for urls in url_lists:
-                        self.add_urls(urls)
+                    url_lists = DataList(instance=self.receiver.recv())
+                    for url_list in url_lists:
+                        self.add_urls(url_list)
 
                 if self.responder in sockets and sockets[
                         self.responder] == zmq.POLLIN:
@@ -61,7 +62,8 @@ class FrontQueue(object):
                         continue
 
                     urls = self.get_batch()
-                    self.responder.send_json(urls)
+                    url_list = DataList(type="URLS", elements=urls)
+                    self.responder.send(url_list.encode())
             except Exception as exc:
                 self.logger.error("ERROR: {}".format(exc))
 
@@ -69,14 +71,12 @@ class FrontQueue(object):
         """
         Add a list of URLs to the queue if they have not been seen before
         """
-        new_urls = []
-        for priority, url in urls:
-            url = url.encode("utf-8")
-            if not self._is_seen(url):
-                self.queue.put((priority, url))
-                new_urls.append(url)
+        new_urls = [url for url in urls if not self._is_seen(url)]
+        self.update_seen(new_urls)
 
-        self.seen_urls.update(new_urls)
+        for url in urls:
+            self.queue.put(url)
+
         self.logger.info("{} of {} found urls was new".format(
             len(new_urls), len(urls)))
 
@@ -84,7 +84,10 @@ class FrontQueue(object):
         """
         Checks wether this URL has been seen before
         """
-        return url in self.seen_urls
+        return url.to_bytes() in self.seen_urls
+
+    def update_seen(self, urls):
+        self.seen_urls.update([url.to_bytes() for url in urls])
 
     def get_batch(self):
         """
@@ -97,7 +100,6 @@ class FrontQueue(object):
             if self.queue.empty():
                 break
 
-            priority, url = self.queue.get()
-            urls.append(url.decode("utf-8"))
+            urls.append(self.queue.get())
 
         return urls

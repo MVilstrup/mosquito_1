@@ -4,6 +4,8 @@ from .front_queue import FrontQueue
 from multiprocessing import Process
 import logging
 
+from mosquito.messages import DataList
+
 
 class Coordinator(object):
     """
@@ -56,12 +58,12 @@ class Coordinator(object):
             self.front_client.send_string(request)
 
             # Wait for the FrontQueue to respond
-            url_list = self.front_client.recv_json()
+            url_list = DataList(instance=self.front_client.recv())
 
             # Check all URLs in the response and send them to the BackQueue
             urls = self.check_urls(url_list)
             if urls:
-                self.back_server.send_json(urls)
+                self.back_server.send(urls.encode())
 
         front_queue.join()
         back_queue.join()

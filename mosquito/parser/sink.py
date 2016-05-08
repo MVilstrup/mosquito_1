@@ -5,6 +5,8 @@
 import zmq
 import logging
 
+from mosquito.messages import DataList
+
 
 class Sink(object):
 
@@ -35,20 +37,14 @@ class Sink(object):
         extracted = []
         while True:
             try:
-                page, found_links = self.result_port.recv_json()
-
-                if self.forward_pages:
-                    message = {"page": page, "links": found_links}
-                    extracted.append(message)
-                else:
-                    # Give all links equal priority
-                    priority = [1 for i in range(len(found_links))]
-                    found_links = list(zip(priority, found_links))
-                    extracted.append(found_links)
+                found_links = DataList(instance=self.result_port.recv())
+                extracted.append(found_links)
 
                 if len(extracted) >= 10:
                     self.logger.info("Sending extracted links")
-                    self.send_port.send_json(extracted)
+                    extracted_list = DataList(type="DATALISTS",
+                                              elements=extracted)
+                    self.send_port.send(extracted.encode())
                     extracted = []
             except KeyboardInterrupt:
                 print("Exiting sink")

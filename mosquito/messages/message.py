@@ -5,6 +5,7 @@ from .list import DataList
 from .url import URL
 from .link import Link
 from .pages import Page
+import hashlib
 
 
 class MessageDecodeError(Exception):

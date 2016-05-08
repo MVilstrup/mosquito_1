@@ -4,7 +4,7 @@
 import zmq
 
 
-class BaseSink(object):
+class Sink(object):
 
     def __init__(self,
                  result_port,

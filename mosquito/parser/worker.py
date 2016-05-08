@@ -5,7 +5,9 @@ import logging
 import requests
 from threading import Thread
 from queue import Queue
-from lxml.html import document_fromstring
+
+from mosquito.messages.pages import HTMLPage
+from mosquito.messages import DataList
 
 
 class Worker(object):
@@ -37,28 +39,29 @@ class Worker(object):
 
         threads = []
         for i in range(max_threads):
-            thread = Thread(target=self._extract_links)
+            thread = Thread(target=self.prioritize_links)
             thread.start()
             threads.append(thread)
 
         self.logger.info("Started workers, waiting for pages")
         while True:
-            page = self.receiver.recv_json()
-            self.work_queue.put(page)
-
-            while not self.result_queue.empty():
-                page, found_links = self.result_queue.get()
-                self.sender.send_json([page, found_links])
-
-    def _extract_links(self):
-        while True:
-            url, page = self.work_queue.get()
-            """ Extract hrefs """
             try:
-                dom = document_fromstring(page)
-                dom.make_links_absolute(url)
-                links = dom.cssselect('a')
-                self.result_queue.put((url, [link.get(
-                    'href') for link in links if link.get('href')]))
-            except:
-                continue
+                page = HTMLPage(instance=self.receiver.recv())
+                self.work_queue.put(page)
+
+                while not self.result_queue.empty():
+                    found_links = self.result_queue.get()
+                    link_list = DataList(type="URLS", elements=found_links)
+                    self.sender.send(link_list.encode())
+            except Exception as exc:
+                self.logger.warning("ERROR: {}".format(exc))
+
+    def prioritize_links(self):
+        while True:
+            page = self.work_queue.get()
+            """ Extract hrefs """
+            links = page.get_links()
+            for link in links:
+                link.priority = 1
+
+            self.result_queue.put(links)

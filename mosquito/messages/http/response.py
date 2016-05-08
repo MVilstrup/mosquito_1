@@ -31,7 +31,7 @@ class Response(object):
             self.cookies = Cookies(cookies=response.cookies)
             self.headers = Headers(headers=response.headers)
             if self.is_valid():
-                self.content = await response.text()
+                self.content = response.text
             else:
                 self.content = None
         else:
@@ -44,7 +44,6 @@ class Response(object):
             self.cookies = None
             self.headers = None
             self.content = None
-
 
     def is_valid(self):
         return 200 <= int(self.status) < 300
@@ -65,4 +64,7 @@ class Response(object):
         pass
 
     def encode(self):
+        pass
+
+    def page(self):
         pass

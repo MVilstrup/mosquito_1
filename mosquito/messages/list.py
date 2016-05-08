@@ -1,6 +1,7 @@
 import msgpack
 from . import Host, Link, URL
 from .pages import Page
+import sys
 
 
 class DataListEncodeError(Exception):
@@ -30,27 +31,32 @@ class DataList(object):
             self._counter = 0
             self.data_type = self._validate_type(type)
 
-
     def decode(self, instance):
-        values = None
+        values = {}
         try:
-            values = msgpack.unpackb(instance)
+            raw_values = msgpack.unpackb(instance)
+            for key, value in raw_values.items():
+                key = str(key, "utf-8")
+                values[key] = value
         except Exception:
             raise DataListDecodeError("Could not unpack instance")
 
-        if not isinstance(values, dict):
+        if not isinstance(raw_values, dict):
             raise DataListDecodeError("Provided instance is not a dictionary")
 
         if not "elements" in values or "data_type" not in values:
-            raise DataListDecodeError("Data Keys doesn't match")
+            raise DataListDecodeError(
+                "Could not unpack values, keys does not match")
 
-        self.data_type = values["data_type"]
-        self.elements = [self._decode_element(e) for e in values["elements"]]
+        self.data_type = str(values["data_type"], "utf-8")
+
+        self.elements = [self._decode_element(e)
+                         for e in values["elements"] if e is not None]
         self._counter = 0
 
     def encode(self):
         encoded_elements = []
-        for element in elements:
+        for element in self.elements:
             try:
                 encoded = element.encode()
                 encoded_elements.append(encoded)
@@ -64,7 +70,7 @@ class DataList(object):
         return self
 
     def __next__(self):  # Python 3: def __next__(self)
-        if self.counter > len(self.elements):
+        if self._counter >= len(self.elements):
             self._counter = 0
             raise StopIteration
         else:
@@ -74,7 +80,7 @@ class DataList(object):
 
     def _validate_type(self, type):
         type = type.upper()
-        if type in ["URL", "LINK", "HOST", "PAGE", "DATALIST"]:
+        if type in ["URLS", "LINKS", "HOSTS", "PAGES", "DATALISTS"]:
             return type
 
         raise ValueError("Unkown DataType: {}".format(type))
@@ -94,3 +100,6 @@ class DataList(object):
         except Exception as exc:
             raise DataListDecodeError("Could not decode element: {}".format(
                 exc))
+
+    def __str__(self):
+        return "DataList({})".format(self.elements)

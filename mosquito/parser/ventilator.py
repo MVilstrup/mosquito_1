@@ -7,7 +7,7 @@
 
 import zmq
 import logging
-
+from mosquito.messages import DataList
 
 
 class Ventilator(object):
@@ -17,7 +17,8 @@ class Ventilator(object):
 
         logger = logging.getLogger('parser')
         hdlr = logging.FileHandler('parser.log')
-        formatter = logging.Formatter('%(asctime)-15s %(levelname)s : %(message)s')
+        formatter = logging.Formatter(
+            '%(asctime)-15s %(levelname)s : %(message)s')
         hdlr.setFormatter(formatter)
         logger.addHandler(hdlr)
         logger.setLevel(logging.INFO)
@@ -32,11 +33,11 @@ class Ventilator(object):
 
         while True:
             try:
-                pages = self.receiver.recv_json()
+                pages = DataList(instance=self.receiver.recv())
                 logger.info("Recieved pages")
 
                 for page in pages:
-                    self.sender.send_json(page)
+                    self.sender.send(page.encode())
             except KeyboardInterrupt:
                 print("Exiting ventilator")
                 return

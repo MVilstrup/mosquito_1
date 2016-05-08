@@ -1,36 +1,48 @@
 from .page import Page
 import cgi
 import asyncio
-import lxml.html
 import nltk
+from mosquito.messages import URL
+from lxml.html import document_fromstring
 
 
 class HTMLPage(Page):
-    def __init__(self, response):
-        if response.status != 200:
+
+    def __init__(self, response=None, instance=None):
+        if response is None and instance is None:
             raise ValueError(
-                "The response shold be 200 for the HTML page to be parsed")
-        content_type = response.headers.get('content-type')
+                "Either a response or an instance has to be provided")
 
-        if not content_type:
-            raise ValueError("Content type could not be determined")
+        if instance is not None:
+            self.decode(instance)
+        else:
+            if response.status != 200:
+                raise ValueError(
+                    "The response shold be 200 for the HTML page to be parsed")
 
-        content_type, pdict = cgi.parse_header(content_type)
-        if not content_type == "text/html":
-            raise ValueError("Only HTML documents are accepted")
+            content_type = response.headers.get('content-type')
+            if not content_type:
+                raise ValueError("Content type could not be determined")
 
-        self._body = yield from response.text()
+            content_type, pdict = cgi.parse_header(content_type)
+            if not content_type == "text/html":
+                raise ValueError("Only HTML documents are accepted")
 
-    @asyncio.coroutine
+            self._body = response.text
+            self._encoding = pdict.get("charset")
+            self.url = URL(url=response.url)
+
     def body(self):
         return self._body
 
-    @asyncio.coroutine
     def links(self):
-        dom = lxml.html.fromstring(self_body)
+        dom = document_fromstring(self._body)
+        dom.make_links_absolute(self.url.to_string())
         for link in dom.xpath('//a/@href'):
-            yield link
+            try:
+                yield URL(url=link)
+            except:
+                continue
 
-    @asyncio.coroutine
     def text(self):
         yield from nltk.clean_html(self._body)

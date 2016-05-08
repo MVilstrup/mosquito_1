@@ -49,13 +49,7 @@ if __name__ == "__main__":
         urls = []
         with open("top-1m.csv", "r") as domain_file:
             url = "http://www.{}"
-            urls += [url.format(d.strip()) for d in domain_file.readlines()]
-
-        # Give all start urls the same priority
-        priority = [i for i in range(len(urls))]
-
-        # Zip together the list of priorities with the list of urls
-        urls = list(zip(priority, urls))
+            urls += [url.format(d.strip()) for d in domain_file.readlines()[:10000]]
 
         # Start coordinator and give it the seed URLs
         # Connect the coordinator to the fetcher
@@ -72,6 +66,7 @@ if __name__ == "__main__":
         # Block forever
         coordinator.join()
         fetcher.join()
+        fetcher_two.join(timeout=None)
         parser.join()
     except KeyboardInterrupt:
         print("\nEXITING\n")

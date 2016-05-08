@@ -7,6 +7,7 @@ import re
 from urllib.parse import urlparse
 from mosquito.utils.urls import (params_to_dict, dict_to_params, clean_protocol,
                                  clean_location, clean_path)
+import sys
 
 
 class URLDecodeError(Exception):
@@ -18,15 +19,18 @@ class URLEncodeError(Exception):
 
 
 class URL(object):
-    __slots__ = ["protocol", "location", "ip", "path", "parameters", "priority"]
+    __slots__ = ["protocol", "location", "ip", "path", "parameters", "priority",
+                 "fingerprint"]
     TYPE = "URL"
 
-    def __init__(self, priority=0, ip=None, url=None, instance=None):
+    def __init__(self, priority=1, ip=None, url=None, instance=None):
         if url is None and instance is None:
             raise URLDecodeError("Either a url or instance has to be provided")
         if instance is not None:
             self.decode(instance)
         else:
+            if isinstance(url, bytes):
+                url = url.decode("utf-8")
             parsed = urlparse(url)
             self.protocol = parsed.scheme
             self.location = parsed.netloc
@@ -34,40 +38,42 @@ class URL(object):
             self.parameters = params_to_dict(parsed.params)
             self.ip = ip
             self.priority = priority
+            self.fingerprint = None
 
     @property
     def reversed(self):
         return self.to_string()[::-1]
 
     def decode(self, instance):
+        values = {}
         try:
-            values = msgpack.unpackb(instance)
+            raw_values = msgpack.unpackb(instance)
+            for key, value in raw_values.items():
+                key = str(key, "utf-8")
+                values[key] = value
         except Exception:
             raise URLDecodeError("Could not unpack instance")
 
-        if not isinstance(values, dict):
-            raise URLDecodeError("Provided instance is not a dictionary")
-
         try:
-            self.protocol = clean_protocol(values[b"protocol"].decode("utf-8"))
-            self.location = clean_location(values[b"location"].decode("utf-8"))
-            self.path = clean_path(values[b"path"].decode("utf-8"))
-            self.parameters = params_to_dict(values[b"parameters"].decode(
-                "utf-8"))
-            self.priority = int(values[b"priority"])
-            self.ip = values[b"priority"].decode("utf-8")
-            self.reversed = reverse(self.to_string())
+            self.protocol = clean_protocol(str(values["protocol"], "utf-8"))
+            self.location = clean_location(str(values["location"], "utf-8"))
+            self.path = clean_path(str(values["path"], "utf-8"))
+            self.parameters = params_to_dict(str(values["parameters"], "utf-8"))
+            self.priority = int(values["priority"])
+            self.ip = values.get("ip")
+            self.fingerprint = values.get("fingerprint")
         except KeyError:
             raise URLDecodeError("Could not unpack values, keys does not match")
 
-    def encode(self, instance):
+    def encode(self):
         values = {"protocol": self.protocol,
                   "location": self.location,
                   "path": self.path,
-                  "parameters": dict_to_params(self.params),
+                  "parameters": dict_to_params(self.parameters),
                   "priority": self.priority,
                   "ip": self.ip,
-                  "TYPE": URL.TYPE}
+                  "TYPE": URL.TYPE,
+                  "fingeprint": self.fingerprint}
 
         return msgpack.packb(values)
 
@@ -76,11 +82,17 @@ class URL(object):
             host = self.ip
         else:
             host = self.location
-        return "{protocol}://www.{host}{path}{params}".format(
+        return "{protocol}://{host}{path}{params}".format(
             protocol=self.protocol,
             host=host,
             path=self.path,
             params=dict_to_params(self.parameters))
+
+    def to_bytes(self):
+        return self.to_string().encode("utf-8")
+
+    def add_fingerprint(self, fingerprint):
+        self.fingerprint = fingerprint
 
     def __eq__(self, other):
         return self.to_string() == other.to_string()
@@ -91,7 +103,26 @@ class URL(object):
     def __str__(self):
         return self.to_string()
 
+    def __lt__(self, other):
+        return self.priority < other.priority
+
+    def __le__(self, other):
+        return self.priority <= other.priority
+
+    def __gt__(self, other):
+        return self.priority > other.priority
+
+    def __ge__(self, other):
+        return self.priority >= other.priority
+
     def __repr__(self):
-        return "URL(protocol={}, location={}, path={}, params={})".format(
-            self.protocol, self.location, self.path,
-            dict_to_params(self.parameters))
+        string = "URL(protocol={}, location={}".format(self.protocol,
+                                                       self.location)
+        if self.path is not None and self.path != "":
+            string += ", path={}".format(self.path)
+        parameters = dict_to_params(self.parameters)
+        if parameters is not None and parameters != "":
+            string += ", parameters={}".format(parameters)
+        string += ")"
+
+        return string

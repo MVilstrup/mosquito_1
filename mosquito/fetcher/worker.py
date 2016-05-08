@@ -5,6 +5,8 @@ import logging
 import requests
 from threading import Thread
 from queue import Queue
+from mosquito.messages import URL
+from mosquito.messages.pages import HTMLPage
 
 
 class Worker(object):
@@ -40,20 +42,20 @@ class Worker(object):
             threads.append(thread)
 
         while True:
-            url = self.receiver.recv_string()
+            url = URL(instance=self.receiver.recv())
             self.work_queue.put(url)
 
             while not self.result_queue.empty():
                 page = self.result_queue.get()
-                self.sender.send_json(page)
+                self.sender.send(page.encode())
 
     def _fetch(self):
         while True:
             url = self.work_queue.get()
             try:
                 print(url)
-                r = requests.get(url, timeout=self.timeout)
-                if r.status_code == 200:
-                    self.result_queue.put((url, r.text))
+                r = requests.get(url.to_string(), timeout=self.timeout)
+                page = HTMLPage(response=r)
+                self.result_queue.put(page)
             except Exception as exc:
                 self.logger.info("ERROR: {} {}".format(url, exc))
