@@ -77,7 +77,7 @@ class URL(object):
 
         return msgpack.packb(values)
 
-    def to_string(self, use_ip=False):
+    def to_string(self, use_ip=True):
         if use_ip and self.ip is not None:
             host = self.ip
         else:

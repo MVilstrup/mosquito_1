@@ -11,7 +11,7 @@ from mosquito.messages.pages import HTMLPage
 
 class Worker(object):
 
-    def __init__(self, work_port, result_port, uid, loop=None, timeout=10):
+    def __init__(self, work_port, result_port, uid, loop=None, timeout=1):
         context = zmq.Context()
 
         self.logger = logging.getLogger('fetcher')
@@ -31,7 +31,7 @@ class Worker(object):
         self.sender.connect(result_port)
         self.timeout = timeout
 
-        max_threads = 10
+        max_threads = 1
         self.work_queue = Queue(max_threads * 10)
         self.result_queue = Queue()
 
@@ -53,8 +53,9 @@ class Worker(object):
         while True:
             url = self.work_queue.get()
             try:
-                print(url)
-                r = requests.get(url.to_string(), timeout=self.timeout)
+                url = url.to_string()
+                print("Requesting : {}".format(url))
+                r = requests.get(url, timeout=self.timeout)
                 page = HTMLPage(response=r)
                 self.result_queue.put(page)
             except Exception as exc:

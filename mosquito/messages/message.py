@@ -19,16 +19,18 @@ class MessageEncodeError(Exception):
 class Message(object):
     """docstring for Message"""
 
-    __slots__ = ["sender", "signature", "data"]
+    __slots__ = ["sender", "signature", "data", "data_type"]
     TYPE = "MESSAGE"
 
     def __init__(self, sender=None, data_type=None, data=None, instance=None):
         super(Message, self).__init__()
+        self._check_data_type(data_type)
         if instance is not None:
+            self.data_type = data_type
             self.decode(instance)
             return
         else:
-            if sender is None or signature is None or data is None or data_type is None:
+            if sender is None or data is None or data_type is None:
                 raise ValueError("Not enough parameters")
 
             self.sender = sender
@@ -37,9 +39,12 @@ class Message(object):
             self.data_type = data_type
 
     def decode(self, instance):
-        values = None
+        values = {}
         try:
-            values = msgpack.unpackb(instance)
+            raw_values = msgpack.unpackb(instance)
+            for key, value in raw_values.items():
+                key = str(key, "utf-8")
+                values[key] = value
         except Exception:
             raise MessageDecodeError("Could not unpack instance")
 
@@ -50,8 +55,8 @@ class Message(object):
             if key not in values:
                 raise KeyError("Message lacks information")
 
-        self.sender = values["sender"]
-        self.signature = values["signature"]
+        self.sender = str(values["sender"], "utf-8")
+        self.signature = str(values["signature"], "utf-8")
         if not self.signature == SECRET_KEY:
             raise MessageDecodeError("Incorrect Signature")
 
@@ -70,17 +75,21 @@ class Message(object):
             raise MessageEncodeError("Message could not be encoded: {}".format(
                 exc))
 
+    def _check_data_type(self, data_type):
+        if data_type not in ["URL", "LINK", "HOST", "PAGE", "DATALIST"]:
+            raise ValueError("{} is not a supported DataType".format(data_type))
+
     def _decode_data(self, data):
         try:
-            if self.data_type == "URLS":
+            if self.data_type == "URL":
                 return URL(instance=data)
-            elif self.data_type == "LINKS":
+            elif self.data_type == "LINK":
                 return Link(instance=data)
-            elif self.data_type == "HOSTS":
+            elif self.data_type == "HOST":
                 return Host(instance=data)
-            elif self.data_type == "PAGES":
+            elif self.data_type == "PAGE":
                 return Page(instance=data)
-            elif self.data_type == "DATALISTS":
+            elif self.data_type == "DATALIST":
                 return DataList(instance=data)
         except Exception as exc:
             raise MessageDecodeError("Could not decode data: {}".format(exc))

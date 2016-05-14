@@ -2,7 +2,7 @@ from queue import PriorityQueue
 from pybloomfilter import BloomFilter
 import zmq
 import logging
-from mosquito.messages import DataList, URL
+from mosquito.messages import DataList, URL, Message
 
 
 class FrontQueue(object):
@@ -29,7 +29,10 @@ class FrontQueue(object):
         self.seen_urls = BloomFilter(100000000, 0.01, b'urls.bloom')
 
         # Add all roots to the seen_urls and PriorityQueue
-        self.add_urls([URL(url=url) for url in roots])
+        # Give them a priority according to their location in the roots
+        self.add_urls([URL(url=url,
+                           priority=len(roots) - index)
+                       for index, url in enumerate(roots)])
 
         # Socket to receive found URLs on
         self.receiver = context.socket(zmq.PULL)
@@ -49,7 +52,9 @@ class FrontQueue(object):
             try:
                 if self.receiver in sockets and sockets[
                         self.receiver] == zmq.POLLIN:
-                    url_lists = DataList(instance=self.receiver.recv())
+                    message = Message(data_type="DATALIST",
+                                      instance=self.receiver.recv())
+                    urls_lists = message.data
                     for url_list in url_lists:
                         self.add_urls(url_list)
 

@@ -11,7 +11,7 @@ def initiate_fetcher(receive_port, send_port):
     result_port = "tcp://127.0.0.1:6661"
 
     fetcher = Process(target=Fetcher,
-                      args=(receive_port, work_port, result_port, send_port, 1))
+                      args=(receive_port, work_port, result_port, send_port, 2))
     fetcher.start()
 
     return fetcher
@@ -29,8 +29,8 @@ def initiate_parser(receive_port, send_port):
 
 
 def initiate_coordinator(roots, start_port, fetcher_port):
-    front_port = "tcp://127.0.0.1:1112"
-    back_port = "tcp://127.0.0.1:1113"
+    front_port = "tcp://127.0.0.1:7772"
+    back_port = "tcp://127.0.0.1:7773"
 
     coordinator = Process(
         target=Coordinator,
@@ -41,7 +41,7 @@ def initiate_coordinator(roots, start_port, fetcher_port):
 
 
 if __name__ == "__main__":
-    start_port = "tcp://127.0.0.1:1111"
+    start_port = "tcp://127.0.0.1:7771"
     fetcher_port = "tcp://127.0.0.1:2222"
     parser_port = "tcp://127.0.0.1:4442"
 
@@ -49,7 +49,8 @@ if __name__ == "__main__":
         urls = []
         with open("top-1m.csv", "r") as domain_file:
             url = "http://www.{}"
-            urls += [url.format(d.strip()) for d in domain_file.readlines()[:10000]]
+            urls += [url.format(d.strip())
+                     for d in domain_file.readlines()[:10000]]
 
         # Start coordinator and give it the seed URLs
         # Connect the coordinator to the fetcher
@@ -66,7 +67,6 @@ if __name__ == "__main__":
         # Block forever
         coordinator.join()
         fetcher.join()
-        fetcher_two.join(timeout=None)
         parser.join()
     except KeyboardInterrupt:
         print("\nEXITING\n")

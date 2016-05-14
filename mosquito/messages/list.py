@@ -78,6 +78,9 @@ class DataList(object):
             self._counter += 1
             return element
 
+    def __len__(self):
+        return len(self.elements)
+
     def _validate_type(self, type):
         type = type.upper()
         if type in ["URLS", "LINKS", "HOSTS", "PAGES", "DATALISTS"]:

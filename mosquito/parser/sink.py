@@ -5,7 +5,7 @@
 import zmq
 import logging
 
-from mosquito.messages import DataList
+from mosquito.messages import DataList, Message
 
 
 class Sink(object):
@@ -44,7 +44,11 @@ class Sink(object):
                     self.logger.info("Sending extracted links")
                     extracted_list = DataList(type="DATALISTS",
                                               elements=extracted)
-                    self.send_port.send(extracted.encode())
+
+                    message = message(data_type="DATALIST",
+                                      sender="parser",
+                                      data=extracted_list)
+                    self.send_port.send(message.encode())
                     extracted = []
             except KeyboardInterrupt:
                 print("Exiting sink")

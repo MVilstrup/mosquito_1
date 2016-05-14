@@ -7,7 +7,7 @@
 
 import zmq
 import logging
-from mosquito.messages import URL, DataList
+from mosquito.messages import DataList, Message
 
 
 class Ventilator(object):
@@ -33,7 +33,10 @@ class Ventilator(object):
 
         while True:
             try:
-                urls = DataList(instance=self.receiver.recv())
+                message = Message(data_type="DATALIST",
+                                  instance=self.receiver.recv())
+                urls = message.data
+                print("Recieved {} URLs".format(len(urls)))
                 for url in urls:
                     self.sender.send(url.encode())
             except KeyboardInterrupt:

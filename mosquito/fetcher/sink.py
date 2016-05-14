@@ -5,7 +5,7 @@
 import zmq
 import logging
 from mosquito.messages.pages import HTMLPage
-from mosquito.messages import DataList
+from mosquito.messages import DataList, Message
 
 
 class Sink(object):
@@ -39,5 +39,10 @@ class Sink(object):
             if len(pages) >= 10:
                 self.logger.info("Sending pages")
                 page_list = DataList(type="PAGES", elements=pages)
-                self.send_port.send(page_list.encode())
+
+                message = Message(sender="fetcher",
+                                  data_type="DATALIST",
+                                  data=page_list)
+
+                self.send_port.send(message.encode())
                 pages = []

@@ -59,7 +59,10 @@ class BackQueue(object):
             if batch:
                 urls = DataList(type="URLS", elements=batch)
                 self.logger.info("Pushing {} urls".format(len(urls)))
-                self.push_urls.send(urls.encode())
+                message = Message(sender="Coordinater",
+                                  data_type="DATALIST",
+                                  data=urls)
+                self.push_urls.send(message.encode())
 
     def put(self, url):
         queue_id = hash(url.location) % self.queue_amount

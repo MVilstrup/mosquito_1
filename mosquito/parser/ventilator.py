@@ -33,13 +33,15 @@ class Ventilator(object):
 
         while True:
             try:
-                pages = DataList(instance=self.receiver.recv())
+                message = Message(data_type="DATALIST",
+                                  instance=self.receiver.recv())
                 logger.info("Recieved pages")
 
+                pages = message.data
                 for page in pages:
                     self.sender.send(page.encode())
             except KeyboardInterrupt:
                 print("Exiting ventilator")
                 return
-            except:
-                pass
+            except Exception as exr:
+                logger.warning("EXCEPTION: {}".format(exr))
